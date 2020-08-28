@@ -5,6 +5,7 @@
 #include <string>
 #include <codecvt>
 #include <csignal>
+#include "map.h"
 #include "client/client.h"
 #include "client/clientmap.h"
 #include "network/address.h"
@@ -20,6 +21,16 @@ using namespace con;
 #define PROTOCOL_ID 0x4f457403
 
 bool got_sigint = false;
+
+class MER : public MapEventReceiver {
+    public:
+    void onMapEditEvent(const MapEditEvent &event) {
+        cout << event.type << endl;
+        for (auto mb : event.modified_blocks) {
+            cout << mb.X << "," << mb.Y << "," << mb.Z << endl;
+        }
+    }
+};
 
 void signal_handler(int x) {
     got_sigint = true;
@@ -90,6 +101,7 @@ int main() {
     }
     cout << "s: " << client->getState() << endl;
     bool first_time = false;
+    MER *mer = new MER();
     while(1) {
         if (got_sigint) {
             delete client;
@@ -105,6 +117,8 @@ int main() {
             cout << "Disconnect requested" << endl;
             break;
         }
+        
+
         itemdef->processQueue(client);
         if (client->getHP() == 0) {
             client->sendRespawn();
@@ -112,6 +126,7 @@ int main() {
         client->step(dtime);
         if (!first_time) {
             client->sendChatMessage(ws);
+            client->getEnv().getMap().addEventReceiver(mer);
             first_time = true;
         }
         LocalPlayer *lplayer = client->getEnv().getLocalPlayer();
@@ -134,6 +149,17 @@ int main() {
         control.up = false;
         control.down = true;
         client->setPlayerControl(control);
+
+        client->step(dtime);
+        control.down = false;
+        control.LMB = true;
+        client->setPlayerControl(control);
+
+        wstring chat_msg;
+        if (client->getChatMessage(chat_msg)) {
+            cout << "Chat:";
+            wcout << chat_msg << endl;
+        }
     }
     return 0;
 }

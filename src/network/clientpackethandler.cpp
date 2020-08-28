@@ -296,7 +296,7 @@ void Client::handleCommand_BlockData(NetworkPacket* pkt)
 
 	v2s16 p2d(p.X, p.Z);
 	sector = m_env.getMap().emergeSector(p2d);
-
+    
 	assert(sector->getPos() == p2d);
 
 	block = sector->getBlockNoCreateNoEx(p.Y);
