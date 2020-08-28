@@ -869,7 +869,6 @@ void Client::ProcessData(NetworkPacket *pkt)
 {
 	ToClientCommand command = (ToClientCommand) pkt->getCommand();
 	u32 sender_peer_id = pkt->getPeerId();
-
 	//infostream<<"Client: received command="<<command<<std::endl;
 	m_packetcounter.add((u16)command);
 	g_profiler->graphAdd("client_received_packets", 1);

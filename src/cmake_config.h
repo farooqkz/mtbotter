@@ -8,11 +8,11 @@
 #define VERSION_MINOR 3
 #define VERSION_PATCH 0
 #define VERSION_EXTRA ""
-#define VERSION_STRING "5.3.0-debug"
+#define VERSION_STRING "5.3.0"
 #define PRODUCT_VERSION_STRING "5.3"
 #define STATIC_SHAREDIR "/usr/local/share/minetest"
 #define STATIC_LOCALEDIR "/usr/local/share/locale"
-#define BUILD_TYPE "Debug"
+#define BUILD_TYPE "Release"
 #define ICON_DIR "/usr/local/share/icons"
 #define RUN_IN_PLACE 0
 #define USE_GETTEXT 0

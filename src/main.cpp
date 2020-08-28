@@ -21,20 +21,9 @@ using namespace con;
 
 bool got_sigint = false;
 
-class MapEdit: public MapEventReceiver {
-    void onMapEditEvent(const MapEditEvent &event) {
-        cout << "Event: " << event.type << " AND ";
-        for (auto p:event.modified_blocks) {
-            cout << "(X,Y,Z) " << "(" << p.X << "," << p.Y << "," << p.Z << ")" << endl;
-        }
-        cout << "===================" << endl;
-    }
-};
-
 void signal_handler(int x) {
     got_sigint = true;
 }
-
 
 int main() {
     cout << "Hi :)" << endl;
@@ -72,7 +61,6 @@ int main() {
             break;
         }
     }
-    cout << "s: " << client->getState() << endl << flush;
     cout << "o: " << connect_ok << endl << flush;
     if (!connect_ok) return 1;
     u64 c = 0;
@@ -89,9 +77,11 @@ int main() {
             return 1;
         }
         if (!client->itemdefReceived()) {
-            cout << c++ << " Item defs..." << endl;
+            cout << c++ << " Item defs...";
         } else if (!client->nodedefReceived()) {
-            cout << c++ << " Node defs..." << endl;
+            cout << c++ << " Node defs...";
+        } else {
+            cout << c++ << " Media... " << client->mediaReceiveProgress()*100 << "%";
         }
     }
     client->afterContentReceived();
@@ -99,12 +89,17 @@ int main() {
         client->step(dtime);
     }
     cout << "s: " << client->getState() << endl;
-    bool sent_msg = false;
+    bool first_time = false;
     while(1) {
         if (got_sigint) {
             delete client;
             cout << "Bye..." << endl;
             return 0;
+        }
+        if (client->accessDenied()) {
+            cout << "Access Denied because..." << endl
+                 << client->accessDeniedReason() << endl;
+            break;
         }
         if (g_gamecallback != nullptr && g_gamecallback->disconnect_requested) {
             cout << "Disconnect requested" << endl;
@@ -115,24 +110,30 @@ int main() {
             client->sendRespawn();
         }
         client->step(dtime);
-        if (!sent_msg) {
+        if (!first_time) {
             client->sendChatMessage(ws);
-            sent_msg = true;
+            first_time = true;
         }
         LocalPlayer *lplayer = client->getEnv().getLocalPlayer();
         if (lplayer == nullptr) {
             cout << "No jumping yet" << endl;
             continue;
         }
-        f32 movement_speed_jump = lplayer->movement_speed_jump;
-        float physics_override_jump = lplayer->physics_override_jump;
-        v3f speedJ = lplayer->getSpeed();
-        if (speedJ.Y >= -0.5f) {
-            speedJ.Y = movement_speed_jump * physics_override_jump;
-            lplayer->setSpeed(speedJ);
-            client->getEventManager()->put(new SimpleTriggerEvent(
-                                    MtEvent::PLAYER_JUMP));
-        }
+        PlayerControl control;
+        // Jump
+        control.jump = true;
+        client->setPlayerControl(control);
+        //lplayer->keyPressed = (0x1) | (1U << 4);
+        
+        client->step(dtime);
+        control.jump = false;
+        control.up = true;
+        client->setPlayerControl(control);
+
+        client->step(dtime);
+        control.up = false;
+        control.down = true;
+        client->setPlayerControl(control);
     }
     return 0;
 }
