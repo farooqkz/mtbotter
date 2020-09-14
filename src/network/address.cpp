@@ -53,6 +53,7 @@ typedef int socklen_t;
 #include <netdb.h>
 #include <unistd.h>
 #include <arpa/inet.h>
+#include "defaultsettings.h"
 #define LAST_SOCKET_ERR() (errno)
 typedef int socket_t;
 #endif
@@ -129,7 +130,7 @@ void Address::Resolve(const char *name)
 	hints.ai_socktype = 0;
 	hints.ai_protocol = 0;
 	hints.ai_flags = 0;
-	if (g_settings->getBool("enable_ipv6")) {
+	if (ENABLE_IPv6) {
 		// AF_UNSPEC allows both IPv6 and IPv4 addresses to be returned
 		hints.ai_family = AF_UNSPEC;
 	} else {

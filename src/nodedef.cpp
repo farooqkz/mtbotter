@@ -37,6 +37,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include "debug.h"
 #include "gamedef.h"
 #include "mapnode.h"
+#include "defaultsettings.h"
 #include <fstream> // Used in applyTextureOverrides()
 #include <algorithm>
 #include <cmath>
@@ -270,7 +271,7 @@ void TextureSettings::readSettings()
 	bool enable_bumpmapping        = g_settings->getBool("enable_bumpmapping");
 	bool enable_parallax_occlusion = g_settings->getBool("enable_parallax_occlusion");
 	bool smooth_lighting           = g_settings->getBool("smooth_lighting");
-	enable_mesh_cache              = g_settings->getBool("enable_mesh_cache");
+	enable_mesh_cache              = ENABLE_MESH_CACHE;
 	enable_minimap                 = g_settings->getBool("enable_minimap");
 	node_texture_size              = g_settings->getU16("texture_min_size");
 	std::string leaves_style_str   = g_settings->get("leaves_style");

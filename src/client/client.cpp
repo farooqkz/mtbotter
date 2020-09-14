@@ -57,6 +57,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include "game.h"
 #include "chatmessage.h"
 #include "translation.h"
+#include "defaultsettings.h"
 
 extern gui::IGUIEnvironment* guienv;
 
@@ -126,91 +127,12 @@ Client::Client(
 	// Add local player
 	m_env.setLocalPlayer(new LocalPlayer(this, playername));
 
-	m_cache_save_interval = g_settings->getU16("server_map_save_interval");
+	m_cache_save_interval = 10;
 }
 
 void Client::loadMods()
 {
     return;
-	// Don't load mods twice.
-	// If client scripting is disabled by the client, don't load builtin or
-	// client-provided mods.
-	if (m_mods_loaded || !g_settings->getBool("enable_client_modding"))
-		return;
-
-	// If client scripting is disabled by the server, don't load builtin or
-	// client-provided mods.
-	// TODO Delete this code block when server-sent CSM and verifying of builtin are
-	// complete.
-	if (checkCSMRestrictionFlag(CSMRestrictionFlags::CSM_RF_LOAD_CLIENT_MODS)) {
-		warningstream << "Client-provided mod loading is disabled by server." <<
-			std::endl;
-		return;
-	}
-
-	m_script = new ClientScripting(this);
-	m_env.setScript(m_script);
-	m_script->setEnv(&m_env);
-
-	// Load builtin
-	scanModIntoMemory(BUILTIN_MOD_NAME, getBuiltinLuaPath());
-	m_script->loadModFromMemory(BUILTIN_MOD_NAME);
-
-	// TODO Uncomment when server-sent CSM and verifying of builtin are complete
-	/*
-	// Don't load client-provided mods if disabled by server
-	if (checkCSMRestrictionFlag(CSMRestrictionFlags::CSM_RF_LOAD_CLIENT_MODS)) {
-		warningstream << "Client-provided mod loading is disabled by server." <<
-			std::endl;
-		// If builtin integrity is wrong, disconnect user
-		if (!checkBuiltinIntegrity()) {
-			// TODO disconnect user
-		}
-		return;
-	}
-	*/
-
-	ClientModConfiguration modconf(getClientModsLuaPath());
-	m_mods = modconf.getMods();
-	// complain about mods with unsatisfied dependencies
-	if (!modconf.isConsistent()) {
-		modconf.printUnsatisfiedModsError();
-		return;
-	}
-
-	// Print mods
-	infostream << "Client loading mods: ";
-	for (const ModSpec &mod : m_mods)
-		infostream << mod.name << " ";
-	infostream << std::endl;
-
-	// Load "mod" scripts
-	for (const ModSpec &mod : m_mods) {
-		if (!string_allowed(mod.name, MODNAME_ALLOWED_CHARS)) {
-			throw ModError("Error loading mod \"" + mod.name +
-				"\": Mod name does not follow naming conventions: "
-					"Only characters [a-z0-9_] are allowed.");
-		}
-		scanModIntoMemory(mod.name, mod.path);
-	}
-
-	// Run them
-	for (const ModSpec &mod : m_mods)
-		m_script->loadModFromMemory(mod.name);
-
-	// Mods are done loading. Unlock callbacks
-	m_mods_loaded = true;
-
-	// Run a callback when mods are loaded
-	m_script->on_mods_loaded();
-
-	// Create objects if they're ready
-	if (m_state == LC_Ready)
-		m_script->on_client_ready(m_env.getLocalPlayer());
-	if (m_camera)
-		m_script->on_camera_ready(m_camera);
-	if (m_minimap)
-		m_script->on_minimap_ready(m_minimap);
 }
 
 bool Client::checkBuiltinIntegrity()
@@ -303,14 +225,13 @@ Client::~Client()
 	m_con->Disconnect();
 
 	deleteAuthData();
-/*
+
 	m_mesh_update_thread.stop();
 	m_mesh_update_thread.wait();
 	while (!m_mesh_update_thread.m_queue_out.empty()) {
 		MeshUpdateResult r = m_mesh_update_thread.m_queue_out.pop_frontNoEx();
 		delete r.mesh;
 	}
-*/
 
 	delete m_inventory_from_server;
 
@@ -408,8 +329,8 @@ void Client::step(float dtime)
 	if(m_map_timer_and_unload_interval.step(dtime, map_timer_and_unload_dtime)) {
 		std::vector<v3s16> deleted_blocks;
 		m_env.getMap().timerUpdate(map_timer_and_unload_dtime,
-			g_settings->getFloat("client_unload_unused_data_timeout"),
-			g_settings->getS32("client_mapblock_limit"),
+		    CLIENT_UNLOAD_UNUSED_DATA_TIMEOUT,
+			CLIENT_MAPBLOCK_LIMIT,
 			&deleted_blocks);
 
 		/*
@@ -518,9 +439,6 @@ void Client::step(float dtime)
 		{
 			num_processed_meshes++;
 
-			MinimapMapblock *minimap_mapblock = NULL;
-			bool do_mapper_update = true;
-
 			MeshUpdateResult r = m_mesh_update_thread.m_queue_out.pop_frontNoEx();
 			MapBlock *block = m_env.getMap().getBlockNoCreateNoEx(r.p);
 			if (block) {
@@ -529,9 +447,6 @@ void Client::step(float dtime)
 				block->mesh = nullptr;
 
 				if (r.mesh) {
-					minimap_mapblock = r.mesh->moveMinimapMapblock();
-					if (minimap_mapblock == NULL)
-						do_mapper_update = false;
 
 					bool is_empty = true;
 					for (int l = 0; l < MAX_TILE_LAYERS; l++)
@@ -548,9 +463,6 @@ void Client::step(float dtime)
 				delete r.mesh;
 			}
 
-			if (m_minimap && do_mapper_update)
-				m_minimap->addBlock(r.p, minimap_mapblock);
-
 			if (r.ack_block_to_server) {
 				if (blocks_to_ack.size() == 255) {
 					sendGotBlocks(blocks_to_ack);
@@ -565,8 +477,6 @@ void Client::step(float dtime)
 				sendGotBlocks(blocks_to_ack);
 		}
 
-		if (num_processed_meshes > 0)
-			g_profiler->graphAdd("num_processed_meshes", num_processed_meshes);
 	}
 
 	/*
@@ -1324,7 +1234,6 @@ void Client::sendPlayerPos()
 
 void Client::removeNode(v3s16 p)
 {
-    std::cout << p.X << " " << p.Y << " " << p.Z << std::endl;
 	std::map<v3s16, MapBlock*> modified_blocks;
 
 	try {
@@ -1778,8 +1687,9 @@ void Client::afterContentReceived()
 
 	// Start mesh update thread after setting up content definitions
 	infostream<<"- Starting mesh update thread"<<std::endl;
-	m_mesh_update_thread.start();
 */
+    m_mesh_update_thread.start();
+
 	m_state = LC_Ready;
 	sendReady();
 

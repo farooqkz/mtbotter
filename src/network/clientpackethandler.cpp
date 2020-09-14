@@ -224,7 +224,6 @@ void Client::handleCommand_AccessDenied(NetworkPacket* pkt)
 
 void Client::handleCommand_RemoveNode(NetworkPacket* pkt)
 {
-    std::cout << "RemoveNode" << std::endl;
 	if (pkt->getSize() < 6)
 		return;
 
@@ -316,15 +315,10 @@ void Client::handleCommand_BlockData(NetworkPacket* pkt)
 		block->deSerializeNetworkSpecific(istr);
 		sector->insertBlock(block);
 	}
-/*
-	if (m_localdb) {
-		ServerMap::saveBlock(block, m_localdb);
-	}
-*/
 	/*
 		Add it to mesh update queue and set it to be acknowledged after update.
 	*/
-	//addUpdateMeshTaskWithEdge(p, true);
+	addUpdateMeshTaskWithEdge(p, true);
 }
 
 void Client::handleCommand_Inventory(NetworkPacket* pkt)
@@ -799,7 +793,6 @@ void Client::handleCommand_PlaySound(NetworkPacket* pkt)
 		[30 + len] f32 pitch
 		[34 + len] bool ephemeral
 	*/
-    return;
 	s32 server_id;
 	std::string name;
 
@@ -820,6 +813,7 @@ void Client::handleCommand_PlaySound(NetworkPacket* pkt)
 		*pkt >> ephemeral;
 	} catch (PacketError &e) {};
 
+    return;
 	// Start playing
 	int client_id = -1;
 	switch(type) {
@@ -854,7 +848,6 @@ void Client::handleCommand_PlaySound(NetworkPacket* pkt)
 
 void Client::handleCommand_StopSound(NetworkPacket* pkt)
 {
-    return;
 	s32 server_id;
 
 	*pkt >> server_id;
@@ -862,13 +855,12 @@ void Client::handleCommand_StopSound(NetworkPacket* pkt)
 	std::unordered_map<s32, int>::iterator i = m_sounds_server_to_client.find(server_id);
 	if (i != m_sounds_server_to_client.end()) {
 		int client_id = i->second;
-		m_sound->stopSound(client_id);
+		//m_sound->stopSound(client_id);
 	}
 }
 
 void Client::handleCommand_FadeSound(NetworkPacket *pkt)
 {
-    return;
 	s32 sound_id;
 	float step;
 	float gain;
@@ -878,8 +870,8 @@ void Client::handleCommand_FadeSound(NetworkPacket *pkt)
 	std::unordered_map<s32, int>::const_iterator i =
 			m_sounds_server_to_client.find(sound_id);
 
-	if (i != m_sounds_server_to_client.end())
-		m_sound->fadeSound(i->second, step, gain);
+	if (i != m_sounds_server_to_client.end());
+		//m_sound->fadeSound(i->second, step, gain);
 }
 
 void Client::handleCommand_Privileges(NetworkPacket* pkt)

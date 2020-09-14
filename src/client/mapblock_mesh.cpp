@@ -29,6 +29,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include "util/directiontables.h"
 #include "client/meshgen/collector.h"
 #include "client/renderingengine.h"
+#include "defaultsettings.h"
 #include <array>
 
 /*
@@ -1035,7 +1036,7 @@ MapBlockMesh::MapBlockMesh(MeshMakeData *data, v3s16 camera_offset):
 		m = new scene::SMesh();
 	m_enable_shaders = data->m_use_shaders;
 	m_use_tangent_vertices = data->m_use_tangent_vertices;
-	m_enable_vbo = g_settings->getBool("enable_vbo");
+	m_enable_vbo = ENABLE_VBO;
 
 	if (g_settings->getBool("enable_minimap")) {
 		m_minimap_mapblock = new MinimapMapblock;
@@ -1219,11 +1220,11 @@ MapBlockMesh::MapBlockMesh(MeshMakeData *data, v3s16 camera_offset):
 		translateMesh(m_mesh[layer],
 			intToFloat(data->m_blockpos * MAP_BLOCKSIZE - camera_offset, BS));
 
-		if (m_use_tangent_vertices) {
+		/*if (m_use_tangent_vertices) {
 			scene::IMeshManipulator* meshmanip =
 				RenderingEngine::get_scene_manager()->getMeshManipulator();
 			meshmanip->recalculateTangents(m_mesh[layer], true, false, false);
-		}
+		}*/
 
 		if (m_mesh[layer]) {
 #if 0

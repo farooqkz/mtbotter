@@ -49,6 +49,7 @@ class MtBotter {
         Address m_address;
         float m_pitch;
         float m_yaw;
+        float m_hit;
     public:
         MtBotter(const char* botname,
                  const string &password,
@@ -73,9 +74,11 @@ class MtBotter {
         short getPosX();
         short getPosY();
         short getPosZ();
-        //bool punch();
+        bool punch();
         bool place();
+        bool place(bool noplace);
         bool dig();
+        bool activate();
         void sendChat(wstring message);
         PointedThing getPointedThing();
     protected:
@@ -106,6 +109,7 @@ MtBotter::MtBotter(const char* botname,
     m_emgr = new EventManager();
     m_client = new Client(botname, password, address_name, m_mpc, nullptr, nullptr, m_itemdef,m_nodemgr,nullptr, m_emgr, false, nullptr);
     m_client->m_simple_singleplayer_mode = false;
+    m_hit = 0.0f;
 }
 
 bool MtBotter::connect() {
@@ -219,7 +223,46 @@ bool MtBotter::dig() {
     return true;
 }
 
-bool MtBotter::place() {
+bool MtBotter::punch() {
+    if (!m_client->checkPrivilege("interact")) {
+        return false;
+    }
+    PointedThing pt = getPointedThing();
+    switch (pt.type) {
+        case POINTEDTHING_NOTHING:
+            return false;
+        case POINTEDTHING_NODE:
+            m_client->interact(INTERACT_START_DIGGING, pt);
+            return true;
+        case POINTEDTHING_OBJECT:
+            ClientActiveObject *selected;
+            selected = m_client->getEnv().getActiveObject(pt.object_id);
+            ItemStack tool_item, selected_item, hand_item;
+            LocalPlayer *player = m_client->getEnv().getLocalPlayer();
+            tool_item = player->getWieldedItem(&selected_item, &hand_item);
+            v3f player_pos = player->getPosition();
+            v3f obj_pos = selected->getPosition();
+            v3f dir = (obj_pos - player_pos).normalize();
+            bool disable_send = selected->directReportPunch(dir, &tool_item, 0);
+
+            if (!disable_send)
+                m_client->interact(INTERACT_START_DIGGING, pt);
+            return true;
+    }
+    return false;
+}
+
+bool MtBotter::activate() {
+    if (!m_client->checkPrivilege("interact")) {
+        return false;
+    }
+    PointedThing pt;
+    pt.type = POINTEDTHING_NOTHING;
+    m_client->interact(INTERACT_ACTIVATE, pt);
+    return true;
+}
+
+bool MtBotter::place(bool noplace) {
     if (!m_client->checkPrivilege("interact")) {
         return false;
     }
@@ -233,7 +276,7 @@ bool MtBotter::place() {
     const ItemStack &tool_item = player->getWieldedItem(&selected_item, &hand_item);
     
     ClientMap &map = m_client->getEnv().getClientMap();
-    auto &def = selected_item.getDefinition(m_itemdef);
+    auto &selected_def = selected_item.getDefinition(m_itemdef);
     
     MapNode node;
     bool is_valid_pos;
@@ -243,6 +286,19 @@ bool MtBotter::place() {
 
     if (!is_valid_pos)
         return false;
+    
+    MapNode p_n = map.getNode(p, &is_valid_pos);
+    if (!is_valid_pos) return false;
+
+    if (m_nodemgr->get(node).rightclickable) {
+        cout << m_nodemgr->get(node).name << endl;
+        if (noplace) {
+            m_client->interact(INTERACT_PLACE, pt);
+            return true;
+        } else {
+            return false;
+        }
+    }
     
     if (m_nodemgr->get(node).buildable_to) {
         p = nodepos; 
@@ -264,8 +320,95 @@ bool MtBotter::place() {
         return false;
     }
 
+    string prediction = selected_def.node_placement_prediction;
+    content_t id;
+    bool found = m_nodemgr->getId(prediction, id);
+    if (!found) {
+        m_client->interact(INTERACT_PLACE, pt);
+        return false;
+    }
+    const ContentFeatures &predicted_f = m_nodemgr->get(id);
+    u8 param2 = 0;
+
+	if (predicted_f.param_type_2 == CPT2_WALLMOUNTED ||
+			predicted_f.param_type_2 == CPT2_COLORED_WALLMOUNTED) {
+		v3s16 dir = nodepos - pt.node_abovesurface;
+
+		if (abs(dir.Y) > MYMAX(abs(dir.X), abs(dir.Z))) {
+			param2 = dir.Y < 0 ? 1 : 0;
+		} else if (abs(dir.X) > abs(dir.Z)) {
+			param2 = dir.X < 0 ? 3 : 2;
+		} else {
+			param2 = dir.Z < 0 ? 5 : 4;
+		}
+	}
+
+	if (predicted_f.param_type_2 == CPT2_FACEDIR ||
+			predicted_f.param_type_2 == CPT2_COLORED_FACEDIR) {
+		v3s16 dir = nodepos - floatToInt(m_client->getEnv().getLocalPlayer()->getPosition(), BS);
+
+		if (abs(dir.X) > abs(dir.Z)) {
+			param2 = dir.X < 0 ? 3 : 1;
+		} else {
+			param2 = dir.Z < 0 ? 2 : 0;
+		}
+	}
+
+    assert(param2 <= 5);
+
+    //Check attachment if node is in group attached_node
+	if (((ItemGroupList) predicted_f.groups)["attached_node"] != 0) {
+		static v3s16 wallmounted_dirs[8] = {
+			v3s16(0, 1, 0),
+			v3s16(0, -1, 0),
+			v3s16(1, 0, 0),
+			v3s16(-1, 0, 0),
+			v3s16(0, 0, 1),
+			v3s16(0, 0, -1),
+		};
+		v3s16 pp;
+
+		if (predicted_f.param_type_2 == CPT2_WALLMOUNTED ||
+				predicted_f.param_type_2 == CPT2_COLORED_WALLMOUNTED)
+			pp = p + wallmounted_dirs[param2];
+		else
+			pp = p + v3s16(0, -1, 0);
+
+		if (!m_nodemgr->get(map.getNode(pp)).walkable) {
+			// Report to server
+			m_client->interact(INTERACT_PLACE, pt);
+			return false;
+		}
+	}
+
+	// Apply color
+	if ((predicted_f.param_type_2 == CPT2_COLOR
+			|| predicted_f.param_type_2 == CPT2_COLORED_FACEDIR
+			|| predicted_f.param_type_2 == CPT2_COLORED_WALLMOUNTED)) {
+		const std::string &indexstr = selected_item.metadata.getString(
+			"palette_index", 0);
+		if (!indexstr.empty()) {
+			s32 index = mystoi(indexstr);
+			if (predicted_f.param_type_2 == CPT2_COLOR) {
+				param2 = index;
+			} else if (predicted_f.param_type_2 == CPT2_COLORED_WALLMOUNTED) {
+				// param2 = pure palette index + other
+				param2 = (index & 0xf8) | (param2 & 0x07);
+			} else if (predicted_f.param_type_2 == CPT2_COLORED_FACEDIR) {
+				// param2 = pure palette index + other
+				param2 = (index & 0xe0) | (param2 & 0x1f);
+			}
+		}
+	}
+    
+    MapNode n(id, 0, param2);
+    m_client->addNode(p, n);
     m_client->interact(INTERACT_PLACE, pt);
     return true;
+}
+
+bool MtBotter::place() {
+    return place(false);
 }
 
 void MtBotter::start() {
@@ -397,19 +540,11 @@ class MB : public MtBotter {
     }
 
     void run() {
-        while (getHeadingH() != 0.0)
-            turnLeft();
-        while (getHeadingV() != 0.0) {
-            if (getHeadingV() < 0.0) {
-                turnHeadUp();
-            } else {
-                turnHeadDown();
-            }
-        }
-        bool placed = false;
+        unsigned i = 0;
         while (!got_sigint) {
             step(2.0);
-            placed = place();
+            if (!(i++ % 360))
+                punch();
         }
     }
 };

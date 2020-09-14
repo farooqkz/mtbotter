@@ -31,6 +31,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include "client/renderingengine.h"
 #include "client.h"
 #include "noise.h"
+#include "defaultsettings.h"
 
 // Distance of light extrapolation (for oversized nodes)
 // After this distance, it gives up and considers light level constant
@@ -66,9 +67,9 @@ MapblockMeshGenerator::MapblockMeshGenerator(MeshMakeData *input, MeshCollector 
 	collector = output;
 
 	nodedef   = data->m_client->ndef();
-	meshmanip = RenderingEngine::get_scene_manager()->getMeshManipulator();
+	//meshmanip = RenderingEngine::get_scene_manager()->getMeshManipulator();
 
-	enable_mesh_cache = g_settings->getBool("enable_mesh_cache") &&
+	enable_mesh_cache = ENABLE_MESH_CACHE &&
 		!data->m_smooth_lighting; // Mesh cache is not supported with smooth lighting
 
 	blockpos_nodes = data->m_blockpos * MAP_BLOCKSIZE;
@@ -1365,7 +1366,7 @@ void MapblockMeshGenerator::drawMeshNode()
 		mesh = cloneMesh(f->mesh_ptr[0]);
 		rotateMeshBy6dFacedir(mesh, facedir);
 		recalculateBoundingBox(mesh);
-		meshmanip->recalculateNormals(mesh, true, false);
+		//meshmanip->recalculateNormals(mesh, true, false);
 	} else
 		return;
 
@@ -1450,7 +1451,7 @@ void MapblockMeshGenerator::generate()
 	for (p.X = 0; p.X < MAP_BLOCKSIZE; p.X++) {
 		n = data->m_vmanip.getNodeNoEx(blockpos_nodes + p);
 		f = &nodedef->get(n);
-		drawNode();
+		//drawNode();
 	}
 }
 

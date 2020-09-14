@@ -23,6 +23,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include "client.h"
 #include "mapblock.h"
 #include "map.h"
+#include "defaultsettings.h"
 
 /*
 	CachedMapBlockData
@@ -56,7 +57,7 @@ MeshUpdateQueue::MeshUpdateQueue(Client *client):
 		g_settings->getBool("enable_bumpmapping") ||
 		g_settings->getBool("enable_parallax_occlusion"));
 	m_cache_smooth_lighting = g_settings->getBool("smooth_lighting");
-	m_meshgen_block_cache_size = g_settings->getS32("meshgen_block_cache_size");
+	m_meshgen_block_cache_size = MG_BLOCK_CACHE_SIZE;
 }
 
 MeshUpdateQueue::~MeshUpdateQueue()
@@ -271,7 +272,7 @@ MeshUpdateThread::MeshUpdateThread(Client *client):
 	UpdateThread("Mesh"),
 	m_queue_in(client)
 {
-	m_generation_interval = g_settings->getU16("mesh_generation_interval");
+	m_generation_interval = MESH_GEN_INTERVAL;
 	m_generation_interval = rangelim(m_generation_interval, 0, 50);
 }
 

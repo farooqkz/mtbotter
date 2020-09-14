@@ -167,13 +167,12 @@ void UDPSocket::Bind(Address addr)
 		address.sin6_port = htons(addr.getPort());
 
 		if (bind(m_handle, (const struct sockaddr *)&address,
-				    false)) {
+				    sizeof(struct sockaddr_in6)) < 0) {
 			dstream << (int)m_handle << ": Bind failed: " << strerror(errno)
 				<< std::endl;
 			throw SocketException("Failed to bind socket");
 		}
 	} else {
-        std::cout << "I am here" << std::endl << std::flush;
 		struct sockaddr_in address;
 		memset(&address, 0, sizeof(address));
 

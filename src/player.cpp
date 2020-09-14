@@ -26,6 +26,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include "gamedef.h"
 #include "settings.h"
 #include "log.h"
+#include "defaultsettings.h"
 #include "porting.h"  // strlcpy
 
 
@@ -161,13 +162,13 @@ void Player::clearHud()
 
 void PlayerSettings::readGlobalSettings()
 {
-	free_move = g_settings->getBool("free_move");
-	pitch_move = g_settings->getBool("pitch_move");
-	fast_move = g_settings->getBool("fast_move");
+	free_move = FREE_MOVE;
+	pitch_move = PITCH_MOVE;
+	fast_move = FAST_MOVE;
 	continuous_forward = g_settings->getBool("continuous_forward");
 	always_fly_fast = g_settings->getBool("always_fly_fast");
 	aux1_descends = g_settings->getBool("aux1_descends");
-	noclip = g_settings->getBool("noclip");
+	noclip = NOCLIP;
 	autojump = g_settings->getBool("autojump");
 }
 

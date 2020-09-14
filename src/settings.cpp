@@ -399,11 +399,12 @@ Settings *Settings::getGroup(const std::string &name) const
 
 
 const std::string &Settings::get(const std::string &name) const
-{
+{/*
 	const SettingsEntry &entry = getEntry(name);
 	if (entry.is_group)
 		throw SettingNotFoundException("Setting [" + name + "] is a group.");
 	return entry.value;
+*/
 }
 
 
@@ -425,13 +426,30 @@ bool Settings::getBool(const std::string &name) const
 
 u16 Settings::getU16(const std::string &name) const
 {
-    return 0;
+    if (name == "active_block_range")
+        return 3;
+    else if (name == "max_block_send_distance")
+        return 10;
+    else if (name == "block_send_optimize_distance")
+        return 4;
+    else
+        return 0;
+
 	return stoi(get(name), 0, 65535);
 }
 
 
 s16 Settings::getS16(const std::string &name) const
 {
+    if (name == "active_block_range")
+        return 3;
+    else if (name == "max_block_send_distance")
+        return 10;
+    else if (name == "block_send_optimize_distance")
+        return 4;
+    else
+        return 0;
+
     return 0;
 	return stoi(get(name), -32768, 32767);
 }
@@ -439,12 +457,30 @@ s16 Settings::getS16(const std::string &name) const
 
 u32 Settings::getU32(const std::string &name) const
 {
+    if (name == "active_block_range")
+        return 3;
+    else if (name == "max_block_send_distance")
+        return 10;
+    else if (name == "block_send_optimize_distance")
+        return 4;
+    else
+        return 0;
+
     return 0;
 	return (u32) stoi(get(name));
 }
 
 s32 Settings::getS32(const std::string &name) const
 {
+    if (name == "active_block_range")
+        return 3;
+    else if (name == "max_block_send_distance")
+        return 10;
+    else if (name == "block_send_optimize_distance")
+        return 4;
+    else
+        return 0;
+
     return 0;
 	return stoi(get(name));
 }
@@ -452,6 +488,15 @@ s32 Settings::getS32(const std::string &name) const
 
 float Settings::getFloat(const std::string &name) const
 {
+    if (name == "active_block_range")
+        return 3;
+    else if (name == "max_block_send_distance")
+        return 10;
+    else if (name == "block_send_optimize_distance")
+        return 4;
+    else
+        return 0;
+
     return 0;
 	return stof(get(name));
 }
@@ -459,6 +504,15 @@ float Settings::getFloat(const std::string &name) const
 
 u64 Settings::getU64(const std::string &name) const
 {
+    if (name == "active_block_range")
+        return 3;
+    else if (name == "max_block_send_distance")
+        return 10;
+    else if (name == "block_send_optimize_distance")
+        return 4;
+    else
+        return 0;
+
     return 0;
 	u64 value = 0;
 	std::string s = get(name);
@@ -470,6 +524,9 @@ u64 Settings::getU64(const std::string &name) const
 
 v2f Settings::getV2F(const std::string &name) const
 {
+    char *a;
+    a = nullptr;
+    *a = ' ';
 	v2f value;
     value.X = value.Y = 0;
 	Strfnd f(get(name));
@@ -482,6 +539,9 @@ v2f Settings::getV2F(const std::string &name) const
 
 v3f Settings::getV3F(const std::string &name) const
 {
+    char *a;
+    a = nullptr;
+    *a = ' ';
 	v3f value;
 	Strfnd f(get(name));
 	f.next("(");

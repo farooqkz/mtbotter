@@ -1039,10 +1039,12 @@ void GenericCAO::step(float dtime, ClientEnvironment *env)
 	}
 
 	// Make sure m_is_visible is always applied
+    /*
 	scene::ISceneNode *node = getSceneNode();
 	if (node)
 		node->setVisible(m_is_visible);
 
+    */
 	if(getParent() != NULL) // Attachments should be glued to their parent by Irrlicht
 	{
 		// Set these for later
@@ -1096,11 +1098,11 @@ void GenericCAO::step(float dtime, ClientEnvironment *env)
 				// Reduce footstep gain, as non-local-player footsteps are
 				// somehow louder.
 				spec.gain *= 0.6f;
-				m_client->sound()->playSoundAt(spec, false, getPosition());
+				//m_client->sound()->playSoundAt(spec, false, getPosition());
 			}
 		}
 	}
-
+/*
 	m_anim_timer += dtime;
 	if(m_anim_timer >= m_anim_framelength)
 	{
@@ -1128,7 +1130,7 @@ void GenericCAO::step(float dtime, ClientEnvironment *env)
 				m_prop.automatic_rotate);
 		node->setRotation(local_rot);
 	}
-
+*/
 	if (!getParent() && m_prop.automatic_face_movement_dir &&
 			(fabs(m_velocity.Z) > 0.001 || fabs(m_velocity.X) > 0.001)) {
 		float target_yaw = atan2(m_velocity.Z, m_velocity.X) * 180 / M_PI

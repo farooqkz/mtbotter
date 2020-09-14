@@ -102,7 +102,7 @@ ClientEnvironment::ClientEnvironment(ClientMap *map,
 	m_texturesource(texturesource),
 	m_client(client)
 {
-	auto *shdrsrc = m_client->getShaderSource();
+	//auto *shdrsrc = m_client->getShaderSource();
 	//shdrsrc->addShaderConstantSetterFactory(new CAOShaderConstantSetterFactory());
 }
 
@@ -323,8 +323,8 @@ void ClientEnvironment::step(float dtime)
 		// Step object
 		cao->step(dtime, this);
 
-		if (update_lighting)
-			cao->updateLight(day_night_ratio);
+		//if (update_lighting)
+		//	cao->updateLight(day_night_ratio);
 	};
 
 	m_ao_manager.step(dtime, cb_state);

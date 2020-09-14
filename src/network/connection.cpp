@@ -1364,7 +1364,6 @@ bool Connection::Receive(NetworkPacket *pkt, u32 timeout)
 			if (e.data.getSize() < 2) {
 				continue;
 			}
-
 			pkt->putRawPacket(*e.data, e.data.getSize(), e.peer_id);
 			return true;
 		case CONNEVENT_PEER_ADDED: {
