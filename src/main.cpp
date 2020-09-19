@@ -48,13 +48,6 @@ struct SomeObject {
     bool immortal, localplayer;
 };
 
-void print_umap(unordered_map<string, int> um) {
-    for (auto i : um) {
-        cout << "(" << i.first << "," << i.second << ") ";
-    }
-    cout << endl;
-}
-
 class MtBotter {
     private:
         Client *m_client;
@@ -98,8 +91,12 @@ class MtBotter {
         void sendChat(wstring message);
         PointedThing getPointedThing();
         void step(float dtime);
-        list<SomeObject> getNearestObjects(f32 max_d);
+        list<SomeObject> getNearestObjects(float max_d);
+        bool getNearestObject(float max_d, SomeObject &obj);
         unsigned short getHP();
+        unsigned short getBreath();
+        bool isDead();
+        list<string> getPlayerNames();
     protected:
         virtual void onRemoveNode(unsigned short pos[]) = 0;
         virtual void onAddNode(unsigned short pos[]) = 0;
@@ -131,13 +128,15 @@ MtBotter::MtBotter(const char* botname,
     m_client->m_simple_singleplayer_mode = false;
     m_hit = 0.0f;
 }
-
+list<string> MtBotter::getPlayerNames() {
+    return m_client->getEnv().getPlayerNames();
+}
 
 unsigned short MtBotter::getHP() {
     return m_client->getHP();
 }
 
-list<SomeObject> MtBotter::getNearestObjects(f32 max_d) {
+list<SomeObject> MtBotter::getNearestObjects(float max_d) {
     vector<DistanceSortedActiveObject> objs;
     v3f player_pos = v3f();
     player_pos.X = getPosX();
@@ -168,6 +167,29 @@ list<SomeObject> MtBotter::getNearestObjects(f32 max_d) {
         result.push_front(obj2add);
     }
     return result;
+}
+
+unsigned short MtBotter::getBreath() {
+    return m_client->getEnv().getLocalPlayer()->getBreath();
+}
+
+bool MtBotter::isDead() {
+    return m_client->getEnv().getLocalPlayer()->isDead();
+}
+
+bool MtBotter::getNearestObject(float max_d, SomeObject &obj) {
+    list<SomeObject> objs = getNearestObjects(max_d);
+    if (objs.size() < 2) {
+        return false;
+    }
+    unsigned i = 1;
+    for (auto o : objs) {
+        if (i++ == 2) {
+            obj = o;
+            return true;
+        }
+    }
+    return false;
 }
 
 bool MtBotter::connect() {
