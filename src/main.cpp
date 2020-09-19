@@ -48,6 +48,11 @@ struct SomeObject {
     bool immortal, localplayer;
 };
 
+struct SomeItemStack {
+    string name;
+    unsigned short count, wear;
+};
+
 class MtBotter {
     private:
         Client *m_client;
@@ -97,12 +102,16 @@ class MtBotter {
         unsigned short getBreath();
         bool isDead();
         list<string> getPlayerNames();
+        void setWieldIndex(unsigned short index);
+        unsigned short getWieldIndex();
+        SomeItemStack getWieldedItem();
     protected:
         virtual void onRemoveNode(unsigned short pos[]) = 0;
         virtual void onAddNode(unsigned short pos[]) = 0;
         virtual void onChatMessage(wstring message) = 0;
         virtual void onConnect() = 0;
         virtual void onDisconnect(string reason) = 0;
+        virtual void onInventoryUpdate() = 0;
         virtual void run() = 0;
 
 };
@@ -190,6 +199,26 @@ bool MtBotter::getNearestObject(float max_d, SomeObject &obj) {
         }
     }
     return false;
+}
+
+
+void MtBotter::setWieldIndex(unsigned short index) {
+    m_client->getEnv().getLocalPlayer()->setWieldIndex(index);
+}
+
+unsigned short MtBotter::getWieldIndex() {
+    return m_client->getEnv().getLocalPlayer()->getWieldIndex();
+}
+
+SomeItemStack MtBotter::getWieldedItem() {
+    ItemStack result, selected, hand;
+    LocalPlayer *player = m_client->getEnv().getLocalPlayer();
+    result = player->getWieldedItem(&selected, &hand);
+    SomeItemStack sis;
+    sis.name = result.name;
+    sis.count = result.count;
+    sis.wear = result.wear;
+    return sis;
 }
 
 bool MtBotter::connect() {
@@ -603,9 +632,9 @@ void signal_handler(int x) {
     got_sigint = true;
 }
 
-class MB : public MtBotter {
+class MonsterKiller : public MtBotter {
     public:
-    MB():MtBotter("testbot",
+    MonsterKiller():MtBotter("testbot",
                       string(""),
                       string("127.0.0.1"),
                       string("127.0.0.1"),
@@ -629,6 +658,10 @@ class MB : public MtBotter {
     }
     
     void onDisconnect(string reason) {
+
+    }
+    
+    void onInventoryUpdate() {
 
     }
 
@@ -673,16 +706,74 @@ class MB : public MtBotter {
     }
 };
 
+class TestBot : public MtBotter {
+    public:
+    TestBot():MtBotter("testbot",
+                      string(""),
+                      string("127.0.0.1"),
+                      string("127.0.0.1"),
+                      30000,
+                      false){}
+    private:
+    void onRemoveNode(unsigned short pos[]) {
+
+    }
+
+    void onAddNode(unsigned short pos[]) {
+
+    }
+
+    void onChatMessage(wstring message) {
+
+    }
+
+    void onConnect() {
+        cout << "[] Connected!" << endl;
+    }
+    
+    void onDisconnect(string reason) {
+
+    }
+    
+    void onInventoryUpdate() {
+
+    }
+
+    void run() {
+        unsigned i = 0, j = 0;
+        bool got_wanted;
+        while (!got_sigint && j++ < 12 * 135) {
+            step(2.0);
+            SomeItemStack sis;
+            if (!(i++ % 135)) {
+                unsigned idx = getWieldIndex();
+                setWieldIndex(++idx);
+                sis = getWieldedItem();
+                cout << sis.name << " [|] " << sis.count;
+                cout << endl;
+            }
+        }
+    }
+};
+
 int main() {
     struct sigaction action;
     action.sa_handler = signal_handler;
     sigaction(SIGINT, &action, NULL);
-    MB *mb = new MB();
+    /*MonsterKiller *mk = new MonsterKiller();
     cout << "Created an instance" << endl;
-    mb->connect();
-    mb->start();
+    mk->connect();
+    mk->start();
     cout << "THE END" << endl;
-    delete mb;
+    delete mk;
     cout << "Bye..." << endl;
+    return 0;*/
+    TestBot *testbot = new TestBot();
+    cout << "Created an instance" << endl;
+    testbot->connect();
+    testbot->start();
+    cout << "THE END!" << endl;
+    delete testbot;
+    cout << "o/" << endl;
     return 0;
 }

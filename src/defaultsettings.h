@@ -21,6 +21,23 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 
 class Settings;
 
+// Client
+#define MG_BLOCK_CACHE_SIZE 20
+#define ENABLE_MESH_CACHE false
+#define MESH_GEN_INTERVAL 0
+#define ENABLE_VBO true
+#define FREE_MOVE false
+#define PITCH_MOVE false
+#define FAST_MOVE false
+#define NOCLIP false
+#define CLIENT_UNLOAD_UNUSED_DATA_TIMEOUT 600
+#define ENABLE_BUILD_WHERE_YOU_STAND false
+#define CLIENT_MAPBLOCK_LIMIT 5000
+
+// Network
+#define ENABLE_IPv6 true
+#define MAX_PACKETS_PER_ITERATION 10243
+#define TIME_SEND_INTERVAL 5
 /**
  * initialize basic default settings
  * @param settings pointer to settings

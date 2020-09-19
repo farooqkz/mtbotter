@@ -3,4 +3,4 @@
 
 #pragma once
 
-#define VERSION_GITHASH "5.3.0"
+#define VERSION_GITHASH "5.3.0-debug"
