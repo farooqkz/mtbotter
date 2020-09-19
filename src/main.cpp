@@ -22,6 +22,11 @@
 #include "util/pointedthing.h"
 #include <line3d.h>
 #include "raycast.h"
+#include "activeobject.h"
+#include "client/clientobject.h"
+#include <list>
+#include "client/content_cao.h"
+#include <unordered_map>
 using namespace std;
 using namespace con;
 
@@ -35,9 +40,20 @@ using namespace con;
 #define JUMP        0b10000
 #define SNEAK       0b100000
 
-
 bool got_sigint = false;
 
+struct SomeObject {
+    float posX, posY, posZ;
+    unordered_map<string, int> groups;
+    bool immortal, localplayer;
+};
+
+void print_umap(unordered_map<string, int> um) {
+    for (auto i : um) {
+        cout << "(" << i.first << "," << i.second << ") ";
+    }
+    cout << endl;
+}
 
 class MtBotter {
     private:
@@ -81,12 +97,16 @@ class MtBotter {
         bool activate();
         void sendChat(wstring message);
         PointedThing getPointedThing();
+        void step(float dtime);
+        list<SomeObject> getNearestObjects(f32 max_d);
+        unsigned short getHP();
     protected:
         virtual void onRemoveNode(unsigned short pos[]) = 0;
         virtual void onAddNode(unsigned short pos[]) = 0;
         virtual void onChatMessage(wstring message) = 0;
+        virtual void onConnect() = 0;
+        virtual void onDisconnect(string reason) = 0;
         virtual void run() = 0;
-        void step(float dtime);
 
 };
 
@@ -110,6 +130,44 @@ MtBotter::MtBotter(const char* botname,
     m_client = new Client(botname, password, address_name, m_mpc, nullptr, nullptr, m_itemdef,m_nodemgr,nullptr, m_emgr, false, nullptr);
     m_client->m_simple_singleplayer_mode = false;
     m_hit = 0.0f;
+}
+
+
+unsigned short MtBotter::getHP() {
+    return m_client->getHP();
+}
+
+list<SomeObject> MtBotter::getNearestObjects(f32 max_d) {
+    vector<DistanceSortedActiveObject> objs;
+    v3f player_pos = v3f();
+    player_pos.X = getPosX();
+    player_pos.Y = getPosY();
+    player_pos.Z = getPosZ();
+    list<SomeObject> result;
+
+    m_client->getEnv().getActiveObjects(player_pos,max_d,objs);
+
+    list<DistanceSortedActiveObject> objs_list;
+    for (auto obj : objs) {
+        objs_list.push_front(obj);
+    }
+    objs_list.sort();
+    SomeObject obj2add;
+    GenericCAO *gobj;
+    u16 id;
+    for (auto obj : objs_list) {
+        id = obj.obj->getId();
+        gobj = m_client->getEnv().getGenericCAO(id);
+        obj2add.localplayer = gobj->isLocalPlayer();
+        obj2add.groups = gobj->getGroups();
+        obj2add.immortal = gobj->isImmortal();
+        obj2add.posX = gobj->getPosition().X;
+        obj2add.posY = gobj->getPosition().Y;
+        obj2add.posZ = gobj->getPosition().Z;
+
+        result.push_front(obj2add);
+    }
+    return result;
 }
 
 bool MtBotter::connect() {
@@ -144,6 +202,7 @@ bool MtBotter::connect() {
     while (!m_client->connectedToServer()) {
         m_client->step(1.0);
     }
+    onConnect();
     return true;
 }
 
@@ -151,8 +210,10 @@ PointedThing MtBotter::getPointedThing() {
     LocalPlayer *player = m_client->getEnv().getLocalPlayer();
     
     // https://stackoverflow.com/questions/10569659/camera-pitch-yaw-to-direction-vector
-    const float yaw = getHeadingH();
-    const float pitch = getHeadingV();
+    float yaw = getHeadingH();
+    yaw = yaw * M_PI / 180; // in radians
+    float pitch = getHeadingV();
+    pitch = pitch * M_PI / 180; // in radians
     const float xzLen = cos(pitch);
     const v3f camera_dir = v3f(xzLen * sin(-yaw),
                                sin(pitch),
@@ -436,16 +497,16 @@ short MtBotter::getPosX() {
 }
 
 short MtBotter::getPosY() {
-    return m_client->getEnv().getLocalPlayer()->getStandingNodePos().Y;
+    return m_client->getEnv().getLocalPlayer()->getStandingNodePos().Y + 1;
 }
 
 short MtBotter::getPosZ() {
     return m_client->getEnv().getLocalPlayer()->getStandingNodePos().Z;
 }
 
-void MtBotter::turnRight(float deg) {
+void MtBotter::turnLeft(float deg) {
     PlayerControl control;
-    control.yaw = fmod(getHeadingH() + deg + 360, 360);
+    control.yaw = fmod(getHeadingH() + deg, 360);
     m_client->setPlayerControl(control);
 }
 
@@ -453,9 +514,9 @@ void MtBotter::turnRight() {
     turnRight(15.0);
 }
 
-void MtBotter::turnLeft(float deg) {
+void MtBotter::turnRight(float deg) {
     PlayerControl control;
-    control.yaw = fmod(getHeadingH() - deg + 360, 360);
+    control.yaw = fmod(getHeadingH() - deg, 360);
     m_client->setPlayerControl(control);
 }
 
@@ -466,6 +527,7 @@ void MtBotter::turnLeft() {
 void MtBotter::turnHeadUp(float deg) {
     PlayerControl control;
     control.pitch = getHeadingV() + deg;
+    control.yaw = getHeadingH();
     m_client->setPlayerControl(control);
 }
 
@@ -476,6 +538,7 @@ void MtBotter::turnHeadUp() {
 void MtBotter::turnHeadDown(float deg) {
     PlayerControl control;
     control.pitch = getHeadingV() - deg;
+    control.yaw = getHeadingH();
     m_client->setPlayerControl(control);
 }
 
@@ -539,12 +602,51 @@ class MB : public MtBotter {
 
     }
 
+    void onConnect() {
+        cout << "[] Connected!" << endl;
+    }
+    
+    void onDisconnect(string reason) {
+
+    }
+
     void run() {
         unsigned i = 0;
+        list<SomeObject> objs;
+        SomeObject obj;
+        bool got_wanted;
         while (!got_sigint) {
             step(2.0);
-            if (!(i++ % 360))
+            got_wanted = false;
+            if (!(i++ % 135)) {
+                objs = getNearestObjects(100);
+                for (auto someobj : objs) {
+                    if (someobj.localplayer) {
+                        continue;
+                    }
+                    auto fleshy=someobj.groups.find("fleshy");
+                    auto immortal=someobj.immortal;
+                    if (fleshy == someobj.groups.end())
+                        continue;
+                    if (fleshy->second > 0 && immortal) {
+                        obj = someobj;
+                        got_wanted = true;
+                        break;
+                    }
+                }
+                if (!got_wanted) {
+                    step(0.5);
+                    continue;
+                }
+                float diff_x = obj.posX - getPosX()/10;
+                float diff_z = obj.posZ - getPosZ()/10;
+                float radian, degree;
+                radian = atan2(diff_x, diff_z);
+                degree = 360 - radian * 180 / M_PI;
+                turnLeft(degree - getHeadingH());
+                step(1.0);
                 punch();
+            }
         }
     }
 };
@@ -556,37 +658,9 @@ int main() {
     MB *mb = new MB();
     cout << "Created an instance" << endl;
     mb->connect();
-    cout << "Connected! Now running" << endl;
     mb->start();
     cout << "THE END" << endl;
     delete mb;
     cout << "Bye..." << endl;
     return 0;
-    /*
-    while(1) {
-        if (got_sigint) {
-            delete client;
-            cout << "Bye..." << endl;
-            return 0;
-        }
-        if (client->accessDenied()) {
-            cout << "Access Denied because..." << endl
-                 << client->accessDeniedReason() << endl;
-            break;
-        }
-        if (g_gamecallback != nullptr && g_gamecallback->disconnect_requested) {
-            cout << "Disconnect requested" << endl;
-            break;
-        }
-        
-
-        itemdef->processQueue(client);
-        if (client->getHP() == 0) {
-            client->sendRespawn();
-        }
-        client->step(dtime);
-                        
-    }
-    return 0;
-    */
 }
