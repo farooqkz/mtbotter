@@ -24,6 +24,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include <ostream>
 #include <map>
 #include <set>
+#include <queue>
 #include <vector>
 #include <unordered_set>
 #include "clientobject.h"
@@ -163,7 +164,7 @@ public:
 	/*
 	 * Command Handlers
 	 */
-
+    bool getEvent(NetworkPacket &pkt);
 	void handleCommand(NetworkPacket* pkt);
 
 	void handleCommand_Null(NetworkPacket* pkt) {};
@@ -600,4 +601,5 @@ private:
 	u32 m_csm_restriction_noderange = 8;
 
 	std::unique_ptr<ModChannelMgr> m_modchannel_mgr;
+    std::queue<NetworkPacket> m_events;
 };

@@ -27,10 +27,10 @@
 #include <list>
 #include "client/content_cao.h"
 #include <unordered_map>
+#include "network/networkpacket.h"
+#include "network/networkprotocol.h"
 using namespace std;
 using namespace con;
-
-#define PROTOCOL_ID 0x4f457403
 
 // These are for Mtbotter::move()
 #define FORWARD     0b1
@@ -106,14 +106,15 @@ class MtBotter {
         unsigned short getWieldIndex();
         SomeItemStack getWieldedItem();
     protected:
-        virtual void onRemoveNode(unsigned short pos[]) = 0;
-        virtual void onAddNode(unsigned short pos[]) = 0;
-        virtual void onChatMessage(wstring message) = 0;
+        virtual void onRemoveNode(short pos[]) = 0;
+        virtual void onAddNode(short pos[]) = 0;
+        virtual void onChatMessage(unsigned char type, wstring sender, wstring message) = 0;
         virtual void onConnect() = 0;
         virtual void onDisconnect(string reason) = 0;
+        virtual void onTime(unsigned short t) = 0;
         virtual void onInventoryUpdate() = 0;
+        virtual void onPlayerMove(float pos[]) = 0;
         virtual void run() = 0;
-
 };
 
 
@@ -533,7 +534,53 @@ void MtBotter::step(float dtime) {
         m_client->sendRespawn();
     }
     m_itemdef->processQueue(m_client);
-    // some event loop(s) here
+    NetworkPacket pkt;
+    v3s16 pos;
+    v3f posf;
+    short pos_arr[3];
+    float posf_arr[3];
+    unsigned char type, ver;
+    unsigned short l1, l2;
+    wstring sender, message;
+    while (m_client->getEvent(pkt)) {
+        switch (pkt.getCommand()) {
+            case TOCLIENT_ADDNODE:
+                pkt >> pos;
+                pos_arr[0] = pos.X;
+                pos_arr[1] = pos.Y;
+                pos_arr[2] = pos.Z;
+                onAddNode(pos_arr);
+                break;
+            case TOCLIENT_REMOVENODE:
+                pkt >> pos;
+                pos_arr[0] = pos.X;
+                pos_arr[1] = pos.Y;
+                pos_arr[2] = pos.Z;
+                onRemoveNode(pos_arr);
+                break;
+            case TOCLIENT_TIME_OF_DAY:
+                unsigned short t;
+                pkt >> t;
+                onTime(t);
+                break;
+            case TOCLIENT_CHAT_MESSAGE:
+                pkt >> ver >>
+                        type >>
+                        l1 >>
+                        sender >>
+                        l2 >>
+                        message;
+                onChatMessage(type, sender, message);
+                break;
+            case TOCLIENT_MOVE_PLAYER:
+                pkt >> posf;
+                posf_arr[0] = posf.X; 
+                posf_arr[1] = posf.Y; 
+                posf_arr[2] = posf.Z; 
+                onPlayerMove(posf_arr);
+                break;
+        }
+    }
 }
 
 MtBotter::~MtBotter() {
@@ -641,15 +688,15 @@ class MonsterKiller : public MtBotter {
                       30000,
                       false){}
     private:
-    void onRemoveNode(unsigned short pos[]) {
+    void onRemoveNode(short pos[]) {
 
     }
 
-    void onAddNode(unsigned short pos[]) {
+    void onAddNode(short pos[]) {
 
     }
 
-    void onChatMessage(wstring message) {
+    void onChatMessage(unsigned char type, wstring sender, wstring message) {
 
     }
 
@@ -664,6 +711,10 @@ class MonsterKiller : public MtBotter {
     void onInventoryUpdate() {
 
     }
+
+    void onPlayerMove(float pos[]) {}
+
+    void onTime(unsigned short t){}
 
     void run() {
         unsigned i = 0;
@@ -715,15 +766,23 @@ class TestBot : public MtBotter {
                       30000,
                       false){}
     private:
-    void onRemoveNode(unsigned short pos[]) {
-
+    void onRemoveNode(short pos[]) {
+        cout << "R: ";
+        cout << pos[0] << " ";
+        cout << pos[1] << " ";
+        cout << pos[2] << " ";
+        cout << endl;
     }
 
-    void onAddNode(unsigned short pos[]) {
-
+    void onAddNode(short pos[]) {
+        cout << "A: ";
+        cout << pos[0] << " ";
+        cout << pos[1] << " ";
+        cout << pos[2] << " ";
+        cout << endl;
     }
 
-    void onChatMessage(wstring message) {
+    void onChatMessage(unsigned char type, wstring sender, wstring message) {
 
     }
 
@@ -739,19 +798,19 @@ class TestBot : public MtBotter {
 
     }
 
+    void onTime(unsigned short t) {
+    }
+
+    void onPlayerMove(float pos[]) {
+        cout << "M: " << pos[0];
+        cout << pos[1] << " ";
+        cout << pos[2] << endl;
+    }
+
     void run() {
         unsigned i = 0, j = 0;
-        bool got_wanted;
-        while (!got_sigint && j++ < 12 * 135) {
+        while (!got_sigint) {
             step(2.0);
-            SomeItemStack sis;
-            if (!(i++ % 135)) {
-                unsigned idx = getWieldIndex();
-                setWieldIndex(++idx);
-                sis = getWieldedItem();
-                cout << sis.name << " [|] " << sis.count;
-                cout << endl;
-            }
         }
     }
 };

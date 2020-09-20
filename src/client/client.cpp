@@ -130,6 +130,15 @@ Client::Client(
 	m_cache_save_interval = 10;
 }
 
+bool Client::getEvent(NetworkPacket &pkt) {
+    if (m_events.size() == 0) {
+        return false;
+    }
+    pkt = m_events.front();
+    m_events.pop();
+    return true;
+}
+
 void Client::loadMods()
 {
     return;
@@ -769,6 +778,7 @@ void Client::ReceiveAll()
 inline void Client::handleCommand(NetworkPacket* pkt)
 {
 	const ToClientCommandHandler& opHandle = toClientCommandTable[pkt->getCommand()];
+    m_events.push(*pkt);
 	(this->*opHandle.handler)(pkt);
 }
 
