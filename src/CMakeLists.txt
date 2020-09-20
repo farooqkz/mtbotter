@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 2.6)
 
-project(minetest)
+project(mtbotter)
 
 INCLUDE(CheckIncludeFiles)
 INCLUDE(CheckLibraryExists)
@@ -412,7 +412,8 @@ set(common_SRCS
 	itemstackmetadata.cpp
 	light.cpp
 	log.cpp
-	main.cpp
+	mtbotter.cpp
+    mtbotter.h
 	map.cpp
 	map_settings_manager.cpp
 	mapblock.cpp
@@ -546,10 +547,11 @@ endif()
 
 
 set(EXECUTABLE_OUTPUT_PATH "${CMAKE_SOURCE_DIR}/bin")
+set(LIBRARY_OUTPUT_PATH "${CMAKE_SOURCE_DIR}/lib")
 
 
 if(BUILD_CLIENT)
-	add_executable(${PROJECT_NAME} ${client_SRCS} ${extra_windows_SRCS})
+    add_library(${PROJECT_NAME} SHARED ${client_SRCS} ${extra_windows_SRCS})
 	add_dependencies(${PROJECT_NAME} GenerateVersion)
 	set(client_LIBS
 		${PROJECT_NAME}

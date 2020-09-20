@@ -6,8 +6,8 @@ if(${CMAKE_VERSION} STREQUAL "2.8.2")
 endif()
 
 # This can be read from ${PROJECT_NAME} after project() is called
-project(minetest)
-set(PROJECT_NAME_CAPITALIZED "Minetest")
+project(mtbotter)
+set(PROJECT_NAME_CAPITALIZED "MtBotter")
 
 # Works only for cmake 3.1 and greater
 set(CMAKE_CXX_STANDARD 11)
