@@ -72,7 +72,7 @@ if(CMAKE_COMPILER_IS_GNUCC)
 	set(CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_C_FLAGS_WITHDEBINFO} -O2 -g")
 endif(CMAKE_COMPILER_IS_GNUCC)
 
-set(COMPILE_FLAGS "-fPIC")
+add_compile_options(-fPIC)
 
 add_subdirectory(src build)
 
